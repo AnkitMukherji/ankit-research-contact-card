@@ -1,0 +1,17 @@
+BEGIN:VCARD
+VERSION:3.0
+N:Mukherjee;Ankit;;;
+FN:Ankit Mukherjee
+ORG:CSIR–Institute of Genomics and Integrative Biology
+TITLE:Researcher
+TEL;TYPE=CELL,VOICE,PREF:+919330111538
+EMAIL;TYPE=INTERNET,PREF:ankit0204.am@gmail.com
+URL;TYPE=WORK:https://ankitmukherji.github.io/ankit-research-contact-card/
+URL;TYPE=POSTER:https://ankitmukherji.github.io/ankit-research-contact-card/Ankit_Mukherjee_Poster_GIC2026.pdf
+X-ABLabel:Poster PDF
+URL;TYPE=LinkedIn:https://www.linkedin.com/in/ankit-mukherjee-647ab81ba
+URL;TYPE=Google Scholar:https://scholar.google.com/citations?user=2D5kUnQAAAAJ&hl=en
+URL;TYPE=ORCID:https://orcid.org/0009-0005-5847-5986
+URL;TYPE=GitHub:https://github.com/AnkitMukherji
+NOTE:Researcher at CSIR-IGIB. Poster presentation at GIC 2026: Pharmacogenomics across Indian populations (GenomeIndia Project). Focus: Genomics, Pharmacogenomics, Population Genomics, Bioinformatics.
+END:VCARD
