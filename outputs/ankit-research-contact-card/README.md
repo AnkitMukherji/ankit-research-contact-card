@@ -73,6 +73,22 @@ git push -u origin main
 
 ---
 
+## 📄 How to Update the Poster PDF & Preview Thumbnail
+
+Whenever you update your poster, simply replace `Ankit_Mukherjee_Poster_GIC2026.pdf` in the root folder and run:
+
+```bash
+# Automatically converts your new PDF into assets/poster-preview.png
+python3 scripts/update_poster.py
+
+# Push changes live to GitHub Pages
+git add -A
+git commit -m "Update conference poster PDF and preview thumbnail"
+git push origin main
+```
+
+---
+
 ## 🖨️ QR Code Generation Script
 
 You can regenerate QR codes at any time with custom URLs or settings:

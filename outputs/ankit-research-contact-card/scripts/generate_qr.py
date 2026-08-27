@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 scripts/generate_qr.py
-Official Apple CoreImage CIQRCodeGenerator Engine with 100% Solid Opaque 24-bit RGB PNG & Clean SVG.
-Zero transparency, guaranteed camera recognition on iOS, Android, and all physical scanners.
+Official Apple CoreImage CIQRCodeGenerator Engine & Automatic PDF-to-Preview Renderer.
+Zero pip dependencies required (uses built-in macOS CoreImage & PDFKit frameworks).
 """
 
 import os
@@ -13,7 +13,9 @@ import argparse
 import ctypes
 import ctypes.util
 
-# Setup Objective-C Runtime
+# ==============================================================================
+# Setup Objective-C Runtime & Apple Frameworks
+# ==============================================================================
 objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library('objc'))
 objc.objc_getClass.restype = ctypes.c_void_p
 objc.objc_getClass.argtypes = [ctypes.c_char_p]
@@ -24,11 +26,18 @@ ctypes.cdll.LoadLibrary('/System/Library/Frameworks/Foundation.framework/Foundat
 ctypes.cdll.LoadLibrary('/System/Library/Frameworks/CoreImage.framework/CoreImage')
 ctypes.cdll.LoadLibrary('/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics')
 ctypes.cdll.LoadLibrary('/System/Library/Frameworks/AppKit.framework/AppKit')
+ctypes.cdll.LoadLibrary('/System/Library/Frameworks/PDFKit.framework/PDFKit')
+
+class CGPoint(ctypes.Structure):
+    _fields_ = [('x', ctypes.c_double), ('y', ctypes.c_double)]
+
+class CGSize(ctypes.Structure):
+    _fields_ = [('width', ctypes.c_double), ('height', ctypes.c_double)]
 
 class CGRect(ctypes.Structure):
-    _fields_ = [('x', ctypes.c_double), ('y', ctypes.c_double),
-                ('width', ctypes.c_double), ('height', ctypes.c_double)]
+    _fields_ = [('origin', CGPoint), ('size', CGSize)]
 
+# Dedicated C-type prototypes
 msg_send_obj = ctypes.cast(objc.objc_msgSend, ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p))
 msg_send_str = ctypes.cast(objc.objc_msgSend, ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p))
 msg_send_data = ctypes.cast(objc.objc_msgSend, ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t))
@@ -37,15 +46,79 @@ msg_send_rect = ctypes.cast(objc.objc_msgSend, ctypes.CFUNCTYPE(CGRect, ctypes.c
 msg_send_create_cg = ctypes.cast(objc.objc_msgSend, ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, CGRect))
 msg_send_long = ctypes.cast(objc.objc_msgSend, ctypes.CFUNCTYPE(ctypes.c_long, ctypes.c_void_p, ctypes.c_void_p))
 msg_send_ptr = ctypes.cast(objc.objc_msgSend, ctypes.CFUNCTYPE(ctypes.POINTER(ctypes.c_uint8), ctypes.c_void_p, ctypes.c_void_p))
+msg_send_ulong = ctypes.cast(objc.objc_msgSend, ctypes.CFUNCTYPE(ctypes.c_ulong, ctypes.c_void_p, ctypes.c_void_p))
+msg_send_page = ctypes.cast(objc.objc_msgSend, ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong))
+msg_send_box = ctypes.cast(objc.objc_msgSend, ctypes.CFUNCTYPE(CGRect, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_long))
+msg_send_thumb = ctypes.cast(objc.objc_msgSend, ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, CGSize, ctypes.c_long))
+msg_send_png = ctypes.cast(objc.objc_msgSend, ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong, ctypes.c_void_p))
 
-def str_to_nsstring(s):
+def str_to_nsstring(s: str):
     NSString = objc.objc_getClass(b'NSString')
     return msg_send_str(NSString, objc.sel_registerName(b'stringWithUTF8String:'), s.encode('utf-8'))
 
-def str_to_nsdata(s):
+def str_to_nsdata(s: str):
     b = s.encode('utf-8')
     NSData = objc.objc_getClass(b'NSData')
     return msg_send_data(NSData, objc.sel_registerName(b'dataWithBytes:length:'), b, len(b))
+
+# ==============================================================================
+# PDF to PNG High-Resolution Preview Converter
+# ==============================================================================
+
+def convert_pdf_to_preview_png(pdf_path: str = "Ankit_Mukherjee_Poster_GIC2026.pdf", output_png: str = "assets/poster-preview.png", max_width: float = 1600.0):
+    """Converts the first page of the poster PDF into a crisp thumbnail PNG using macOS PDFKit."""
+    if not os.path.exists(pdf_path):
+        print(f"  [!] Poster PDF not found at '{pdf_path}' (skipping preview generation).")
+        return False
+    
+    abs_pdf_path = os.path.abspath(pdf_path)
+    print(f"[*] Rendering poster preview thumbnail from: {pdf_path}")
+    
+    path_ns = str_to_nsstring(abs_pdf_path)
+    NSURL = objc.objc_getClass(b'NSURL')
+    url = msg_send_set_val(NSURL, objc.sel_registerName(b'fileURLWithPath:'), path_ns, None)
+    
+    PDFDocument = objc.objc_getClass(b'PDFDocument')
+    doc = msg_send_set_val(msg_send_obj(PDFDocument, objc.sel_registerName(b'alloc')), objc.sel_registerName(b'initWithURL:'), url, None)
+    if not doc:
+        print(f"  [!] Could not load PDF at '{abs_pdf_path}'")
+        return False
+    
+    page_count = msg_send_ulong(doc, objc.sel_registerName(b'pageCount'))
+    if page_count == 0:
+        print(f"  [!] PDF document has 0 pages.")
+        return False
+    
+    page = msg_send_page(doc, objc.sel_registerName(b'pageAtIndex:'), 0)
+    bounds = msg_send_box(page, objc.sel_registerName(b'boundsForBox:'), 0)
+    
+    w = bounds.size.width
+    h = bounds.size.height
+    aspect = h / w if w > 0 else 1.33
+    target_w = max_width
+    target_h = max_width * aspect
+    
+    thumb_size = CGSize(target_w, target_h)
+    thumb = msg_send_thumb(page, objc.sel_registerName(b'thumbnailOfSize:forBox:'), thumb_size, 0)
+    
+    tiff = msg_send_obj(thumb, objc.sel_registerName(b'TIFFRepresentation'))
+    NSBitmapImageRep = objc.objc_getClass(b'NSBitmapImageRep')
+    rep = msg_send_set_val(NSBitmapImageRep, objc.sel_registerName(b'imageRepWithData:'), tiff, None)
+    
+    png_data = msg_send_png(rep, objc.sel_registerName(b'representationUsingType:properties:'), 4, None)
+    length = msg_send_ulong(png_data, objc.sel_registerName(b'length'))
+    ptr = msg_send_ptr(png_data, objc.sel_registerName(b'bytes'))
+    
+    os.makedirs(os.path.dirname(output_png), exist_ok=True)
+    with open(output_png, "wb") as f:
+        f.write(bytes(ptr[:length]))
+    
+    print(f"  [+] Saved High-Res Preview: {output_png} ({int(target_w)}x{int(target_h)}px, {length:,} bytes)")
+    return True
+
+# ==============================================================================
+# Solid Opaque 24-bit PNG Exporter
+# ==============================================================================
 
 def write_opaque_png(matrix, output_path, scale=12, quiet_zone=4, dpi=72):
     """Writes standard solid 24-bit RGB PNG with ZERO transparency and guaranteed high contrast."""
@@ -89,6 +162,10 @@ def write_opaque_png(matrix, output_path, scale=12, quiet_zone=4, dpi=72):
     with open(output_path, 'wb') as f:
         f.write(png_header + ihdr_chunk + phys_chunk + idat_chunk + iend_chunk)
 
+# ==============================================================================
+# Apple CoreImage QR Code Generator
+# ==============================================================================
+
 def generate_apple_qr(url: str, output_dir: str = "assets"):
     os.makedirs(output_dir, exist_ok=True)
     print(f"[*] Generating Apple CoreImage QR Code for: {url}")
@@ -114,15 +191,14 @@ def generate_apple_qr(url: str, output_dir: str = "assets"):
     bpr = msg_send_long(rep, objc.sel_registerName(b'bytesPerRow'))
     ptr = msg_send_ptr(rep, objc.sel_registerName(b'bitmapData'))
     
-    raw_w = int(raw_extent.width)
-    raw_h = int(raw_extent.height)
+    raw_w = int(raw_extent.size.width)
+    raw_h = int(raw_extent.size.height)
     
     # CoreImage CIQRCodeGenerator has 1 module border by default. Extract core matrix without the border.
     core_matrix = []
     for y in range(1, raw_h - 1):
         row = []
         for x in range(1, raw_w - 1):
-            # ARGB byte order: byte 0=Alpha, byte 1=Red
             offset = y * bpr + x * 4
             red = ptr[offset + 1]
             is_dark = (red < 128)
@@ -219,13 +295,20 @@ def generate_apple_qr(url: str, output_dir: str = "assets"):
         f.write(badge_svg_content)
     print(f"  [+] Saved Poster Badge SVG: {badge_path}")
 
-    print("\n[✓] All Apple CoreImage QR Code assets successfully generated with 100% solid opacity!")
+    # 6. Automatically convert the PDF into high-res poster-preview.png
+    pdf_candidate = "Ankit_Mukherjee_Poster_GIC2026.pdf"
+    preview_output = os.path.join(output_dir, "poster-preview.png")
+    convert_pdf_to_preview_png(pdf_candidate, preview_output)
+
+    print("\n[✓] All assets (QR codes + Poster Preview Thumbnail) successfully generated and synchronized!")
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate Apple CoreImage QR codes.")
+    parser = argparse.ArgumentParser(description="Generate Apple CoreImage QR codes & Poster Preview Image.")
     parser.add_argument("--url", default="https://ankitmukherji.github.io/ankit-research-contact-card/", help="Website URL")
     parser.add_argument("--outdir", default="assets", help="Assets output directory")
+    parser.add_argument("--pdf", default="Ankit_Mukherjee_Poster_GIC2026.pdf", help="Poster PDF filename")
     args = parser.parse_args()
+    
     generate_apple_qr(args.url, args.outdir)
 
 if __name__ == '__main__':
