@@ -1,4 +1,10 @@
-# Ankit Mukherjee — Conference Poster & Digital Contact Card
+# Ankit Mukherjee: Research Communication and Conference Poster
+
+**Computational biology · Population pharmacogenomics · Disease transcriptomics**
+
+This project connects a scientific poster with a mobile contact page, downloadable research material, and academic profiles. It supports communication of GenomeIndia pharmacogenomics work and gives visitors a route from the conference presentation to the underlying research portfolio.
+
+[Research portfolio and CV](https://github.com/AnkitMukherji/CV) · [Population pharmacogenomics code](https://github.com/AnkitMukherji/Medical_Relevance_GI) · [FRDA transcriptomics](https://github.com/AnkitMukherji/FRDA_Analysis) · [Single-cell methods](https://github.com/AnkitMukherji/single_cell_analysis)
 
 A lightweight, mobile-first academic contact card and conference poster distribution website designed for **GIC 2026** (*Genomics International Conference*).
 
