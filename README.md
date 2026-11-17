@@ -12,6 +12,10 @@ When conference attendees scan the QR code on your printed poster, this page ope
 
 ---
 
+## Folder guides
+
+- [Poster and QR asset maintenance](scripts/README.md)
+
 ## 🎯 Features
 
 - 📄 **Direct Poster Download**: Instant 1-tap download of the full-resolution poster PDF (`Ankit_Mukherjee_Poster_GIC2026.pdf` · 2.1 MB).
